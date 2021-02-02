@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30907.101
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "CountmonServer", "CountmonServer\CountmonServer.njsproj", "{9A3FB4D3-F940-4540-8CFC-3182F4643AFD}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9A3FB4D3-F940-4540-8CFC-3182F4643AFD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9A3FB4D3-F940-4540-8CFC-3182F4643AFD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9A3FB4D3-F940-4540-8CFC-3182F4643AFD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9A3FB4D3-F940-4540-8CFC-3182F4643AFD}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {CB688C95-58BD-4956-AC3E-8AA54008F228}
+	EndGlobalSection
+EndGlobal
