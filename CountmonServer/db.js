@@ -10,6 +10,7 @@ var pool = mysql.createPool({
     connectionLimit: 1
 });
 
+
 var db = {
     query: function (querystring, callback) {
         return new Promise(function (resolve, reject) {
@@ -38,18 +39,92 @@ var db = {
             });
         })
     },
-    select: function (selectstring, tablestring, callback) {
-        let querystring = "SELECT " + selectstring + " FROM " + tablestring;
-        pool.query(querystring, [selectstring, tablestring], callback);
-    },
-    selectWhere: function (selectstring, tablestring, wherecolumnstring, wherevaluestring, callback) {
-        let querystring = "SELECT " + selectstring + " FROM " + tablestring + " WHERE " + wherecolumnstring + " = ?";
-        pool.query(querystring, [wherevaluestring], callback);
-    },
-    insert: function (tablestring, valuesstring, callback) {
-        let querystring = "INSERT INTO " + tablestring + " VALUES " + valuesstring;
-        pool.query(querystring, [tablestring, valuesstring], callback);
-    },
+    Datatable: class Datatable {
+        constructor(table) {
+            this.table = table;
+        }
+
+        insert(fields, values) {
+            let thisObj = this; 
+
+            return new Promise(function (resolve, reject) {
+                if (fields.length != values.length) {
+                    reject(new Error("Array length of 'fields' and 'values' don't match!"));
+                }
+                else {
+                    let placeholders = [];
+                    values.forEach(x => placeholders.push("?"));
+                    let queryString = "INSERT INTO " + thisObj.table + "(" + fields.join(",") + ") VALUES (" + placeholders.join(",") + ")";
+
+                    pool.query(queryString, values, function (err) {
+                        if (err) {
+                            console.log("db error: " + err.code);
+                            reject(err);
+                        }
+                        else {
+                            resolve();
+                        }
+                    });
+                }
+            });
+        }
+
+        selectAll() {
+            return this.select("*");
+        }
+
+        selectAllWhere(whereField, whereValue) {
+            return this.selectWhere("*", whereField, whereValue);
+        }
+
+        select(fields) {
+            let thisObj = this;
+            let selectString = "";
+
+            if (Array.isArray(fields)) {
+                selectString = fields.join(",");
+            }
+            else {
+                selectString = fields;
+            }
+
+            return new Promise(function (resolve, reject) {
+                pool.query("select " + selectString + " from " + thisObj.table, function (err, results) {
+                    if (err) {
+                        console.log("db error: " + err.code);
+                        reject(err);
+                    }
+                    else {
+                        resolve(results);
+                    }
+                });
+            });
+        }
+
+        selectWhere(fields, whereField, whereValue) {
+            let thisObj = this;
+            let selectString = "";
+
+            if (Array.isArray(fields)) {
+                selectString = fields.join(",");
+            }
+            else {
+                selectString = fields;
+            }
+
+            return new Promise(function (resolve, reject) {
+                pool.query("select " + selectString + " from " + thisObj.table + " where " + whereField + " = ?", [whereValue], function (err, results) {
+                    if (err) {
+                        console.log("db error: " + err.code);
+                        reject(err);
+                    }
+                    else {
+                        resolve(results);
+                    }
+                });
+            });
+        }
+    },    
 };
 
 module.exports = db;

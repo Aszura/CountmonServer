@@ -7,10 +7,12 @@ var saltRounds = 12;
 
 /* GET users listing. */
 router.get("/adduser", function (req, res) {
+    let userTable = new db.Datatable("users");
+
     bcrypt
         .hash("test", saltRounds)
         .then(function (hash) {
-            return db.queryValues("insert into users(email, password, firstname, lastname) values (?, ?, ?, ?)", ["info@its-simon.at", hash, "simon", "dobersberger"]);
+            return userTable.insert(["email", "password", "firstname", "lastname"], ["info@its-simon.at", hash, "simon", "dobersberger"]);
         })
         .then(function (results) {
             return res.send("User added!");
@@ -21,16 +23,15 @@ router.get("/adduser", function (req, res) {
 });
 
 router.get("/getuser", function (req, res) {
-    bcrypt
-        .hash("test", saltRounds)
-        .then(function (hash) {
-            return db.queryValues("select * FROM users WHERE id = ?", [req.query.id]);
-        })
+    let userTable = new db.Datatable("users");
+
+    userTable
+        .selectAllWhere("id", req.query.id)
         .then(function (results) {
             return res.send("User: " + JSON.stringify(results));
         })
         .catch(function (err) {
-            console.log("Error on select: " + err.code);
+            console.log("Error on select: " + err);
         });
 });
 
