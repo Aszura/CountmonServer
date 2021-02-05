@@ -35,4 +35,26 @@ router.get("/getuser", function (req, res) {
         });
 });
 
+router.get("/login", function (req, res) {
+    let userTable = new db.Datatable("users");
+
+    userTable
+        .selectWhere("password", "email", req.query.email)
+        .then(function (result) {
+            return bcrypt.compare(req.query.pw, result[0].password);
+        })
+        .then(function (result) {
+            if (result) {
+                return res.send("User '" + req.query.email + "' logged in successfully!");
+            }
+            else {
+                return res.status(401).send("User '" + req.query.email + "' entered wrong password!");
+            }
+        })
+        .catch(function (err) {
+            console.log("Login error: " + err);
+            return res.status(500).send();
+        });
+});
+
 module.exports = router;
