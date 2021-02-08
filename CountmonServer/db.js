@@ -1,6 +1,6 @@
 "use strict";
 var express = require("express");
-var mysql = require("mysql");
+var mysql = require("mysql2");
 
 var pool = mysql.createPool({
     host: "service.its-simon.at",
@@ -17,7 +17,7 @@ var db = {
             pool.query(querystring, function (err, results) {
                 if (err) {
                     console.log("db error: " + err.code);
-                    reject(err);
+                    reject(new Error(err.message));
                 }
                 else {
                     resolve(results);
@@ -31,7 +31,7 @@ var db = {
             pool.query(querystring, values, function (err, results) {
                 if (err) {
                     console.log("db error: " + err.code);
-                    reject(err);
+                    reject(new Error(err.message));
                 }
                 else {
                     resolve(results);
@@ -59,7 +59,51 @@ var db = {
                     pool.query(queryString, values, function (err) {
                         if (err) {
                             console.log("db error: " + err.code);
-                            reject(err);
+                            reject(new Error(err.message));
+                        }
+                        else {
+                            resolve();
+                        }
+                    });
+                }
+            });
+        }
+
+        delete(whereField, whereValue) {
+            let thisObj = this;
+
+            return new Promise(function (resolve, reject) {
+                pool.query("DELETE FROM " + thisObj.table + " where " + whereField + " = ?", [whereValue], function (err) {
+                    if (err) {
+                        console.log("db error: " + err.code);
+                        reject(new Error(err.message));
+                    }
+                    else {
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        update(fields, values, whereField, whereValue) {
+            let thisObj = this;
+
+            return new Promise(function (resolve, reject) {
+                if (fields.length != values.length) {
+                    reject(new Error("Array length of 'fields' and 'values' don't match!"));
+                }
+                else {
+                    let set = [];
+                    fields.forEach(x => set.push(x + " = ?"));
+                    let query = "UPDATE " + thisObj.table + " SET " + set.join(",") + " where " + whereField + " = ?";
+
+                    let placeholders = values;
+                    placeholders.push(whereValue);
+
+                    pool.query(query, placeholders, function (err, result) {
+                        if (err) {
+                            console.log("db error: " + err.code);
+                            reject(new Error(err.message));
                         }
                         else {
                             resolve();
@@ -92,7 +136,7 @@ var db = {
                 pool.query("select " + selectString + " from " + thisObj.table, function (err, results) {
                     if (err) {
                         console.log("db error: " + err.code);
-                        reject(err);
+                        reject(new Error(err.message));
                     }
                     else {
                         resolve(results);
@@ -116,7 +160,7 @@ var db = {
                 pool.query("select " + selectString + " from " + thisObj.table + " where " + whereField + " = ?", [whereValue], function (err, results) {
                     if (err) {
                         console.log("db error: " + err.code);
-                        reject(err);
+                        reject(new Error(err.message));
                     }
                     else {
                         resolve(results);
