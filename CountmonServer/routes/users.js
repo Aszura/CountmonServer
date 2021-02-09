@@ -6,6 +6,7 @@ var bcrypt = require("bcrypt");
 const saltRoundsPassword = 12;
 var jwt = require("jsonwebtoken");
 var crypto = require("crypto");
+const { Console } = require("console");
 const expireTimeSeconds = 300;
 const refreshTimeMs = 86400000;
 const cookieHttpOnly = true;
@@ -14,8 +15,39 @@ const cookieSecure = false;
 const secret = crypto.randomBytes(256);
 
 function sendAuthError(res, err) {
-    console.log("Error: " + err);
-    res.status(401).send();
+    console.log("Auth error: " + err);
+    return res.redirect("/users/login");
+}
+
+function refreshToken(req, res, next) {
+
+    let tokenTable = new db.Datatable("authToken");
+    let token = jwt.decode(req.cookies["auth"]);
+
+    tokenTable
+        .selectWhere("refreshTime", "userid", token.id)
+        .then(function (results) {
+            if (!results) {
+                return Promise.reject(new Error("No refresh token found!"));
+            }
+
+            let date = new Date(parseInt(results[0].refreshTime));
+            if (date < Date.now()) {
+                return Promise.reject(new Error("Refresh token expired!"));
+            }
+
+            let newToken = jwt.sign({ id: token.id }, secret, { issuer: "its-simon.at", audience: "its-simon.at", expiresIn: expireTimeSeconds });
+            res.cookie("auth", newToken, { httpOnly: cookieHttpOnly, secure: cookieSecure });
+            let newDate = Date.now() + refreshTimeMs;
+            return tokenTable.update(["refreshTime"], [newDate.toString()], "userid", token.id);
+        })
+        .then(function () {
+            console.log("Updated token for user id " + token.id);
+            return next();
+        })
+        .catch(function (err) {
+            return sendAuthError(res, err);
+        });
 }
 
 /* GET users listing. */
@@ -49,6 +81,10 @@ router.get("/getuser", function (req, res) {
 });
 
 router.get("/login", function (req, res) {
+    if (!req.query.email || !req.query.pw) {
+        return res.send("Please login!");
+    }
+
     let userTable = new db.Datatable("users");
     let tokenTable = new db.Datatable("authToken");
     let userId = 0;
@@ -80,10 +116,7 @@ router.get("/login", function (req, res) {
         });
 });
 
-router.get("/me", function (req, res) {
-    let tokenTable = new db.Datatable("authToken");
-    let token;
-
+router.use("/member", function (req, res, next) {
     // Check for token
     if (!req.cookies["auth"]) {
         return sendAuthError(res, new Error("Auth cookie missing!"));
@@ -91,40 +124,28 @@ router.get("/me", function (req, res) {
 
     // Verify token
     try {
-        token = jwt.verify(req.cookies["auth"], secret, { issuer: "its-simon.at", audience: "its-simon.at" });
-        return res.send("All is well...");
+        jwt.verify(req.cookies["auth"], secret, { issuer: "its-simon.at", audience: "its-simon.at" });
+        next();
     }
     catch (err) {
         if (err instanceof jwt.TokenExpiredError) {
-            token = jwt.decode(req.cookies["auth"]);
-            tokenTable
-                .selectWhere("refreshTime", "userid", token.id)
-                .then(function (results) {
-                    if (!results) {
-                        return Promise.reject(new Error("No refresh token found!"));
-                    }
-
-                    let date = new Date(parseInt(results[0].refreshTime));
-                    if (date < Date.now()) {
-                        return Promise.reject(new Error("Refresh token expired!"));
-                    }
-
-                    let newToken = jwt.sign({ id: token.id }, secret, { issuer: "its-simon.at", audience: "its-simon.at", expiresIn: expireTimeSeconds });
-                    res.cookie("auth", newToken, { httpOnly: cookieHttpOnly, secure: cookieSecure });
-                    let newDate = Date.now() + refreshTimeMs;
-                    return tokenTable.update(["refreshTime"], [newDate.toString()], "userid", token.id);
-                })
-                .then(function () {
-                    return res.send("Updated token. All is well...");
-                })
-                .catch(function (err) {
-                    sendAuthError(res, err);
-                });
+            return refreshToken(req, res, next);
         }
         else {
             return sendAuthError(res, err);
         }
     }
+});
+
+router.get("/member/me", function (req, res) {
+    let userTable = new db.Datatable("users");
+    let token = jwt.decode(req.cookies["auth"]);
+
+    userTable
+        .selectWhere(["firstname", "lastname"], "id", token.id)
+        .then(function (results) {
+            return res.send(results);
+        });
 });
 
 module.exports = router;
