@@ -6,7 +6,6 @@ var bcrypt = require("bcrypt");
 const saltRoundsPassword = 12;
 var jwt = require("jsonwebtoken");
 var crypto = require("crypto");
-const { Console } = require("console");
 const expireTimeSeconds = 300;
 const refreshTimeMs = 86400000;
 const cookieHttpOnly = true;
