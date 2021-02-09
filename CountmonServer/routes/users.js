@@ -3,19 +3,34 @@ var express = require("express");
 var router = express.Router();
 var db = require("../db");
 var bcrypt = require("bcrypt");
-const saltRoundsPassword = 12;
 var jwt = require("jsonwebtoken");
 var crypto = require("crypto");
+
+const saltRoundsPassword = 12;
 const expireTimeSeconds = 300;
 const refreshTimeMs = 86400000;
 const cookieHttpOnly = true;
 const cookieSecure = false;
-
+const tokenIssuer = "its-simon.at";
+const tokenAudience = "its-simon.at";
 const secret = crypto.randomBytes(256);
 
 function sendAuthError(res, err) {
     console.log("Auth error: " + err);
-    return res.redirect("/users/login");
+    res.redirect("/users/login");
+}
+
+function registerNewToken(res, userId, payload) {
+    let tokenTable = new db.Datatable("authToken");
+    let token = jwt.sign(payload, secret, { issuer: tokenIssuer, audience: tokenAudience, expiresIn: expireTimeSeconds });
+    res.cookie("auth", token, { httpOnly: cookieHttpOnly, secure: cookieSecure });
+
+    let date = Date.now() + refreshTimeMs;
+    return tokenTable
+        .delete("userid", userId)
+        .then(function (result) {
+            return tokenTable.insert(["userid", "refreshTime"], [userId, date.toString()]);
+        });
 }
 
 function refreshToken(req, res, next) {
@@ -23,7 +38,7 @@ function refreshToken(req, res, next) {
     let tokenTable = new db.Datatable("authToken");
     let token = jwt.decode(req.cookies["auth"]);
 
-    tokenTable
+    return tokenTable
         .selectWhere("refreshTime", "userid", token.id)
         .then(function (results) {
             if (!results) {
@@ -35,17 +50,14 @@ function refreshToken(req, res, next) {
                 return Promise.reject(new Error("Refresh token expired!"));
             }
 
-            let newToken = jwt.sign({ id: token.id }, secret, { issuer: "its-simon.at", audience: "its-simon.at", expiresIn: expireTimeSeconds });
-            res.cookie("auth", newToken, { httpOnly: cookieHttpOnly, secure: cookieSecure });
-            let newDate = Date.now() + refreshTimeMs;
-            return tokenTable.update(["refreshTime"], [newDate.toString()], "userid", token.id);
+            return registerNewToken(res, token.id, token);
         })
         .then(function () {
             console.log("Updated token for user id " + token.id);
-            return next();
+            next();
         })
         .catch(function (err) {
-            return sendAuthError(res, err);
+            sendAuthError(res, err);
         });
 }
 
@@ -59,7 +71,7 @@ router.get("/adduser", function (req, res) {
             return userTable.insert(["email", "password", "firstname", "lastname"], [req.query.email, hash, req.query.firstname, req.query.lastname]);
         })
         .then(function (results) {
-            return res.send("User added!");
+            res.send("User added!");
         })
         .catch(function (err) {
            console.log("Error on insert: " + err.code);
@@ -72,7 +84,7 @@ router.get("/getuser", function (req, res) {
     userTable
         .selectAllWhere("id", req.query.id)
         .then(function (results) {
-            return res.send("User: " + JSON.stringify(results));
+            res.send("User: " + JSON.stringify(results));
         })
         .catch(function (err) {
             console.log("Error on select: " + err);
@@ -85,7 +97,6 @@ router.get("/login", function (req, res) {
     }
 
     let userTable = new db.Datatable("users");
-    let tokenTable = new db.Datatable("authToken");
     let userId = 0;
 
     userTable
@@ -98,20 +109,13 @@ router.get("/login", function (req, res) {
             if (!valid) {
                 return Promise.reject(new Error("User '" + req.query.email + "' entered wrong password!"));
             }
-            let token = jwt.sign({ id: userId }, secret, { issuer: "its-simon.at", audience: "its-simon.at", expiresIn: expireTimeSeconds });
-            res.cookie("auth", token, { httpOnly: cookieHttpOnly, secure: cookieSecure });
-
-            return tokenTable.delete("userid", userId);
+            return registerNewToken(res, userId, { id: userId });
         })
         .then(function () {
-            let date = Date.now() + refreshTimeMs;
-            return tokenTable.insert(["userid", "refreshTime"], [userId, date.toString()]);
-        })
-        .then(function () {
-            return res.send("User '" + req.query.email + "' logged in successfully!");
+            res.send("User '" + req.query.email + "' logged in successfully!");
         })
         .catch(function (err) {
-            return sendAuthError(res, err);
+            sendAuthError(res, err);
         });
 });
 
@@ -123,15 +127,15 @@ router.use("/member", function (req, res, next) {
 
     // Verify token
     try {
-        jwt.verify(req.cookies["auth"], secret, { issuer: "its-simon.at", audience: "its-simon.at" });
+        jwt.verify(req.cookies["auth"], secret, { issuer: tokenIssuer, audience: tokenAudience });
         next();
     }
     catch (err) {
         if (err instanceof jwt.TokenExpiredError) {
-            return refreshToken(req, res, next);
+            refreshToken(req, res, next);
         }
         else {
-            return sendAuthError(res, err);
+            sendAuthError(res, err);
         }
     }
 });
@@ -143,7 +147,7 @@ router.get("/member/me", function (req, res) {
     userTable
         .selectWhere(["firstname", "lastname"], "id", token.id)
         .then(function (results) {
-            return res.send(results);
+            res.send(results);
         });
 });
 
