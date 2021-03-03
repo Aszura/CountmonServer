@@ -1,8 +1,7 @@
 "use strict";
-var express = require("express");
-var mysql = require("mysql2");
+const mysql = require("mysql2");
 
-var pool = mysql.createPool({
+const pool = mysql.createPool({
     host: "service.its-simon.at",
     user: "c1_sql",
     password: "q9Wd!vS6",
@@ -12,7 +11,7 @@ var pool = mysql.createPool({
 
 
 var db = {
-    query: function (querystring, callback) {
+    query: function (querystring) {
         return new Promise(function (resolve, reject) {
             pool.query(querystring, function (err, results) {
                 if (err) {
@@ -26,7 +25,7 @@ var db = {
         })
         
     },
-    queryValues: function (querystring, values, callback) {
+    queryValues: function (querystring, values) {
         return new Promise(function (resolve, reject) {
             pool.query(querystring, values, function (err, results) {
                 if (err) {

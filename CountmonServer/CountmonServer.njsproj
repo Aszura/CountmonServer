@@ -31,8 +31,11 @@
   </PropertyGroup>
   <ItemGroup>
     <Content Include="app.js" />
+    <Content Include="auth.js">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="db.js" />
-    <Content Include="routes\invoices\incoming.js">
+    <Content Include="routes\invoices.js">
       <SubType>Code</SubType>
     </Content>
     <Content Include="routes\index.js" />
@@ -40,7 +43,6 @@
     <Content Include="package.json" />
     <Content Include="public\stylesheets\main.css" />
     <Content Include="README.md" />
-    <Content Include="views\index.pug" />
     <Content Include="views\layout.pug" />
     <Content Include="views\error.pug" />
   </ItemGroup>
@@ -50,7 +52,6 @@
     <Folder Include="public\javascripts\" />
     <Folder Include="public\stylesheets\" />
     <Folder Include="routes\" />
-    <Folder Include="routes\invoices\" />
     <Folder Include="views\" />
   </ItemGroup>
   <Import Project="$(VSToolsPath)\Node.js Tools\Microsoft.NodejsToolsV2.targets" />
