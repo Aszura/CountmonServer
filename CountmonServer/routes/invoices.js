@@ -3,6 +3,8 @@ const express = require("express");
 const router = express.Router();
 const db = require("../db");
 const auth = require("../auth");
+const upload = require("../upload");
+
 
 router.use("/", function (req, res, next) {
     auth.verifyToken(res, req.cookies["auth"])
@@ -27,18 +29,18 @@ router.get("/getIncomingAll", function (req, res) {
         });
 });
 
-router.post("/addIncoming", function (req, res) {
+router.post("/addIncoming", upload.single("file"), function (req, res) {
     let token = auth.tokenPayload(req.cookies["auth"]);
     const supplier = req.body.supplier;
     const invoiceDate = req.body.invoiceDate;
     const nettosum = req.body.nettosum;
     const bruttosum = req.body.bruttosum;
     const tax = bruttosum - nettosum;
-    const file = req.body.file;
+    const file = req.file;
     console.log(file);
     const isOutgoing = false;
 
-    const valueArray = [token.id, supplier, invoiceDate, nettosum, bruttosum, tax, "", isOutgoing];
+    const valueArray = [token.id, supplier, invoiceDate, nettosum, bruttosum, tax, file.path, isOutgoing];
     const invoicesTable = new db.Datatable("invoices");
 
     return invoicesTable
@@ -50,6 +52,25 @@ router.post("/addIncoming", function (req, res) {
         .catch(function (err) {
             console.log(err);
             res.send(err);
+        });
+});
+
+router.get("/download", function (req, res) {
+    const token = auth.tokenPayload(req.cookies["auth"]);
+    const invoiceId = Number(req.query.id);
+
+    return db
+        .queryValues("SELECT filepath FROM invoices WHERE id = '?' AND userid = '?'", [invoiceId, token.id])
+        .then(function (results) {
+            res.download(results[0].filepath);
+        })
+        .catch(function (err) {
+            res
+                .status(401)
+                .render("error", {
+                    message: "You are not authorized to access this ressource! The admin has been notified. Please go back to the previous page!",
+                    error: {}
+                });
         });
 });
 
