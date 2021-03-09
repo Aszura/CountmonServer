@@ -16,7 +16,7 @@ router.use("/", function (req, res, next) {
         });
 });
 
-router.get("/getIncomingAll", function (req, res) {
+router.get("/getIncoming", function (req, res) {
     let token = auth.tokenPayload(req.cookies["auth"]);
 
     return db
@@ -29,7 +29,33 @@ router.get("/getIncomingAll", function (req, res) {
         });
 });
 
-router.post("/addIncoming", upload.single("file"), function (req, res) {
+router.get("/getOutgoing", function (req, res) {
+    let token = auth.tokenPayload(req.cookies["auth"]);
+
+    return db
+        .queryValues("SELECT * FROM invoices WHERE userid = '?' AND isoutgoing = '?'", [token.id, 1])
+        .then(function (results) {
+            res.send(results);
+        })
+        .catch(function (err) {
+            res.send(err);
+        });
+});
+
+router.get("/getAll", function (req, res) {
+    let token = auth.tokenPayload(req.cookies["auth"]);
+
+    return db
+        .queryValues("SELECT * FROM invoices WHERE userid = '?'", [token.id])
+        .then(function (results) {
+            res.send(results);
+        })
+        .catch(function (err) {
+            res.send(err);
+        });
+});
+
+router.post("/add", upload.single("file"), function (req, res) {
     let token = auth.tokenPayload(req.cookies["auth"]);
     const supplier = req.body.supplier;
     const invoiceDate = req.body.invoiceDate;
@@ -37,8 +63,7 @@ router.post("/addIncoming", upload.single("file"), function (req, res) {
     const bruttosum = req.body.bruttosum;
     const tax = bruttosum - nettosum;
     const file = req.file;
-    console.log(file);
-    const isOutgoing = false;
+    const isOutgoing = String(req.body.isOutgoing).toLowerCase() === "true";
 
     const valueArray = [token.id, supplier, invoiceDate, nettosum, bruttosum, tax, file.path, isOutgoing];
     const invoicesTable = new db.Datatable("invoices");
